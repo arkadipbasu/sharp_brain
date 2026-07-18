@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Vault — Memory &amp; Analytics Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1220;
+    --panel:#101A2C;
+    --panel-raised:#16213A;
+    --line:#243050;
+    --brass:#E8A33D;
+    --brass-dim:#8A6427;
+    --teal:#4FD6C4;
+    --off:#EDEEF0;
+    --off-dim:#8C95AC;
+    --alert:#E8636B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232,163,61,0.08), transparent),
+      var(--ink);
+    color:var(--off);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:40px 24px 80px;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:1px solid var(--line);
+    padding-bottom:20px; margin-bottom:32px;
+    flex-wrap:wrap; gap:16px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:50%;
+    border:2px solid var(--brass);
+    position:relative; flex-shrink:0;
+  }
+  .brand-mark::after{
+    content:''; position:absolute; top:50%; left:50%;
+    width:2px; height:11px; background:var(--brass);
+    transform:translate(-50%,-100%); transform-origin:bottom center;
+    animation:tick 4s steps(12) infinite;
+  }
+  @keyframes tick{ to{ transform:translate(-50%,-100%) rotate(360deg);} }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:1.5rem; font-weight:700; margin:0; letter-spacing:-0.01em;
+  }
+  .tagline{font-size:0.8rem; color:var(--off-dim); margin-top:2px; font-family:'IBM Plex Mono', monospace;}
+  .stat-strip{display:flex; gap:24px; font-family:'IBM Plex Mono', monospace;}
+  .stat{text-align:right;}
+  .stat .v{font-size:1.25rem; font-weight:600; color:var(--brass);}
+  .stat .l{font-size:0.65rem; color:var(--off-dim); text-transform:uppercase; letter-spacing:0.08em;}
+
+  .mode-select{
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;
+  }
+  .mode-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:20px; cursor:pointer; transition:border-color .15s, transform .15s;
+    text-align:left;
+  }
+  .mode-card:hover{border-color:var(--brass-dim); transform:translateY(-2px);}
+  .mode-card.active{border-color:var(--brass); background:var(--panel-raised);}
+  .mode-eyebrow{font-family:'IBM Plex Mono', monospace; font-size:0.68rem; color:var(--teal); text-transform:uppercase; letter-spacing:0.1em;}
+  .mode-title{font-family:'Space Grotesk', sans-serif; font-size:1.15rem; font-weight:600; margin:6px 0 4px;}
+  .mode-desc{font-size:0.82rem; color:var(--off-dim); line-height:1.4;}
+
+  .stage{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:32px; min-height:420px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .stage::before{
+    content:''; position:absolute; inset:0;
+    background-image: linear-gradient(rgba(232,163,61,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(232,163,61,0.035) 1px, transparent 1px);
+    background-size:28px 28px;
+    pointer-events:none;
+  }
+  .stage-inner{position:relative; z-index:1; width:100%; display:flex; flex-direction:column; align-items:center;}
+
+  .prompt{font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:var(--off-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;}
+  .headline{font-family:'Space Grotesk', sans-serif; font-size:1.4rem; font-weight:600; margin-bottom:24px; text-align:center;}
+
+  /* Sequence Vault grid */
+  .grid{display:grid; grid-template-columns:repeat(3,84px); gap:14px; margin-bottom:24px;}
+  .tile{
+    width:84px; height:84px; border-radius:10px;
+    background:var(--panel-raised); border:1px solid var(--line);
+    cursor:pointer; transition:transform .08s, background .15s, box-shadow .15s;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace; color:var(--off-dim); font-size:0.75rem;
+  }
+  .tile:active{transform:scale(0.94);}
+  .tile.lit{background:var(--brass); box-shadow:0 0 24px rgba(232,163,61,0.55); border-color:var(--brass); color:var(--ink);}
+  .tile.correct{background:var(--teal); border-color:var(--teal); box-shadow:0 0 20px rgba(79,214,196,0.5);}
+  .tile.wrong{background:var(--alert); border-color:var(--alert); box-shadow:0 0 20px rgba(232,99,107,0.5);}
+  .tile.disabled{pointer-events:none; opacity:0.55;}
+
+  /* Digit Span */
+  .digit-display{
+    font-family:'IBM Plex Mono', monospace; font-size:3.2rem; font-weight:600;
+    color:var(--brass); letter-spacing:0.1em; min-height:80px;
+    display:flex; align-items:center; justify-content:center; margin-bottom:24px;
+  }
+  .numpad{display:grid; grid-template-columns:repeat(5,56px); gap:10px; margin-bottom:14px;}
+  .numpad button{
+    width:56px; height:56px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-raised); color:var(--off); font-family:'IBM Plex Mono', monospace;
+    font-size:1.1rem; cursor:pointer; transition:transform .08s, background .15s;
+  }
+  .numpad button:active{transform:scale(0.92);}
+  .numpad button.used{opacity:0.35; pointer-events:none;}
+  .input-echo{font-family:'IBM Plex Mono', monospace; font-size:1.1rem; color:var(--teal); min-height:24px; letter-spacing:0.15em; margin-bottom:10px;}
+
+  /* Spatial Recall */
+  .spatial-note{font-family:'IBM Plex Mono', monospace; font-size:0.75rem; color:var(--off-dim); margin-bottom:10px;}
+  .tile.found{background:var(--teal); border-color:var(--teal); color:var(--ink);}
+
+  /* Data Sprint */
+  .sprint-target{font-family:'IBM Plex Mono', monospace; font-size:0.95rem; color:var(--teal); margin-bottom:14px;}
+  .num-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; width:100%; max-width:480px; margin-bottom:20px;}
+  .num-cell{
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:8px;
+    padding:14px 0; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:1.05rem;
+    cursor:pointer; transition:transform .08s, background .15s;
+  }
+  .num-cell:active{transform:scale(0.95);}
+  .num-cell.correct{background:var(--teal); color:var(--ink); border-color:var(--teal);}
+  .num-cell.wrong{background:var(--alert); color:var(--ink); border-color:var(--alert);}
+
+  .sequence-q{font-family:'IBM Plex Mono', monospace; font-size:1.6rem; letter-spacing:0.05em; margin-bottom:18px; color:var(--off);}
+  .answer-row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:480px;}
+  .answer-btn{
+    background:var(--panel-raised); border:1px solid var(--line); border-radius:8px;
+    padding:12px 18px; font-family:'IBM Plex Mono', monospace; font-size:1rem; color:var(--off);
+    cursor:pointer; transition:transform .08s, background .15s;
+  }
+  .answer-btn:active{transform:scale(0.95);}
+  .answer-btn.correct{background:var(--teal); color:var(--ink); border-color:var(--teal);}
+  .answer-btn.wrong{background:var(--alert); color:var(--ink); border-color:var(--alert);}
+
+  .timer-bar{width:100%; max-width:480px; height:5px; background:var(--line); border-radius:3px; overflow:hidden; margin-bottom:22px;}
+  .timer-fill{height:100%; background:var(--teal); width:100%; transform-origin:left;}
+
+  .cta-row{display:flex; gap:12px; margin-top:20px;}
+  .btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.9rem;
+    padding:11px 22px; border-radius:8px; border:1px solid var(--brass);
+    background:transparent; color:var(--brass); cursor:pointer; transition:all .15s;
+  }
+  .btn:hover{background:var(--brass); color:var(--ink);}
+  .btn.primary{background:var(--brass); color:var(--ink);}
+  .btn.primary:hover{background:#fbb85c;}
+
+  .feedback{font-family:'IBM Plex Mono', monospace; font-size:0.85rem; color:var(--off-dim); min-height:20px; margin-top:14px;}
+
+  .dashboard{
+    margin-top:32px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:24px;
+  }
+  .dash-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:18px;}
+  .dash-head h2{font-family:'Space Grotesk', sans-serif; font-size:1rem; margin:0;}
+  .dash-head span{font-family:'IBM Plex Mono', monospace; font-size:0.7rem; color:var(--off-dim);}
+  .dash-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  .dash-cell{background:var(--panel-raised); border:1px solid var(--line); border-radius:8px; padding:14px;}
+  .dash-cell .l{font-size:0.65rem; color:var(--off-dim); text-transform:uppercase; letter-spacing:0.08em; font-family:'IBM Plex Mono', monospace;}
+  .dash-cell .v{font-family:'Space Grotesk', sans-serif; font-size:1.3rem; font-weight:700; color:var(--off); margin-top:4px;}
+  .history-log{margin-top:16px; font-family:'IBM Plex Mono', monospace; font-size:0.75rem; color:var(--off-dim); line-height:1.9; max-height:120px; overflow-y:auto;}
+  .history-log div span{color:var(--teal);}
+
+  footer{text-align:center; margin-top:36px; font-family:'IBM Plex Mono', monospace; font-size:0.7rem; color:var(--off-dim);}
+
+  @media (max-width:600px){
+    .mode-select{grid-template-columns:1fr;}
+    .grid{grid-template-columns:repeat(3,72px);}
+    .tile{width:72px; height:72px;}
+    .dash-grid{grid-template-columns:1fr 1fr;}
+    .stat-strip{gap:16px;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .brand-mark::after{animation:none;}
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <h1>Pattern Vault</h1>
+        <div class="tagline">memory recall / analytic reasoning</div>
+      </div>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="v" id="statScore">0</div><div class="l">Score</div></div>
+      <div class="stat"><div class="v" id="statStreak">0</div><div class="l">Streak</div></div>
+      <div class="stat"><div class="v" id="statBest">0</div><div class="l">Best Streak</div></div>
+    </div>
+  </header>
+
+  <div class="mode-select">
+    <div class="mode-card active" id="cardMemory" onclick="selectMode('memory')">
+      <div class="mode-eyebrow">Mode 01</div>
+      <div class="mode-title">Memory Vault</div>
+      <div class="mode-desc">Three rotating puzzles — Sequence Vault, Digit Span, and Spatial Recall — each scaling as you improve.</div>
+    </div>
+    <div class="mode-card" id="cardAnalytics" onclick="selectMode('analytics')">
+      <div class="mode-eyebrow">Mode 02</div>
+      <div class="mode-title">Data Sprint</div>
+      <div class="mode-desc">Five rotating quant puzzles under a clock — odd one out, number chains, comparisons, percent snap, closest to average.</div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-inner" id="stageInner">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <div class="dashboard">
+    <div class="dash-head">
+      <h2>Session Stats</h2>
+      <span id="sessionCount">0 rounds played</span>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-cell"><div class="l">Accuracy</div><div class="v" id="dashAccuracy">—</div></div>
+      <div class="dash-cell"><div class="l">Avg Reaction</div><div class="v" id="dashReaction">—</div></div>
+      <div class="dash-cell"><div class="l">Max Sequence</div><div class="v" id="dashMaxSeq">—</div></div>
+      <div class="dash-cell"><div class="l">Sprint Correct</div><div class="v" id="dashSprint">—</div></div>
+    </div>
+    <div class="history-log" id="historyLog"></div>
+  </div>
+
+  <footer>Runs entirely in your browser — no data leaves this page, and progress resets when you close the tab.</footer>
+</div>
+
+<script>
+// ---------- Global state ----------
+let mode = 'memory';
+let score = 0, streak = 0, bestStreak = 0;
+let roundsPlayed = 0, correctRounds = 0;
+let reactionTimes = [];
+let maxSeqLen = 0;
+let sprintCorrect = 0, sprintTotal = 0;
+let history = [];
+
+const statScore = document.getElementById('statScore');
+const statStreak = document.getElementById('statStreak');
+const statBest = document.getElementById('statBest');
+const stageInner = document.getElementById('stageInner');
+
+function updateStats(){
+  statScore.textContent = score;
+  statStreak.textContent = streak;
+  statBest.textContent = bestStreak;
+  document.getElementById('sessionCount').textContent = roundsPlayed + ' round' + (roundsPlayed===1?'':'s') + ' played';
+  document.getElementById('dashAccuracy').textContent = roundsPlayed ? Math.round(100*correctRounds/roundsPlayed) + '%' : '—';
+  document.getElementById('dashReaction').textContent = reactionTimes.length ? (reactionTimes.reduce((a,b)=>a+b,0)/reactionTimes.length/1000).toFixed(2) + 's' : '—';
+  document.getElementById('dashMaxSeq').textContent = maxSeqLen || '—';
+  document.getElementById('dashSprint').textContent = sprintTotal ? sprintCorrect + '/' + sprintTotal : '—';
+}
+
+function logHistory(text){
+  history.unshift(text);
+  if(history.length > 12) history.pop();
+  document.getElementById('historyLog').innerHTML = history.map(h=>'<div>'+h+'</div>').join('');
+}
+
+function selectMode(m){
+  mode = m;
+  document.getElementById('cardMemory').classList.toggle('active', m==='memory');
+  document.getElementById('cardAnalytics').classList.toggle('active', m==='analytics');
+  if(m==='memory') startMemoryRound(); else startSprintRound();
+}
+
+// ---------- MEMORY MODE: rotating puzzles ----------
+const memoryTypes = ['sequence','digit','spatial'];
+let seqLength = 3;
+let sequence = [];
+let playerInput = [];
+let showingSequence = false;
+let memPuzzle = 'sequence';
+
+function startMemoryRound(){
+  memPuzzle = memoryTypes[Math.floor(Math.random()*memoryTypes.length)];
+  if(memPuzzle === 'sequence') startSequenceVault();
+  else if(memPuzzle === 'digit') startDigitSpan();
+  else startSpatialRecall();
+}
+
+function startSequenceVault(){
+  stageInner.innerHTML = `
+    <div class="prompt">Sequence Vault — Level ${seqLength}</div>
+    <div class="headline" id="memHeadline">Watch the pattern</div>
+    <div class="grid" id="memGrid"></div>
+    <div class="feedback" id="memFeedback"></div>
+  `;
+  const grid = document.getElementById('memGrid');
+  for(let i=0;i<9;i++){
+    const t = document.createElement('div');
+    t.className = 'tile disabled';
+    t.dataset.idx = i;
+    t.textContent = '';
+    grid.appendChild(t);
+  }
+  sequence = [];
+  for(let i=0;i<seqLength;i++) sequence.push(Math.floor(Math.random()*9));
+  playerInput = [];
+  showingSequence = true;
+  playSequence();
+}
+
+function playSequence(){
+  const tiles = document.querySelectorAll('#memGrid .tile');
+  let i = 0;
+  const speed = Math.max(280, 620 - seqLength*18);
+  const interval = setInterval(()=>{
+    tiles.forEach(t=>t.classList.remove('lit'));
+    if(i>0) tiles[sequence[i-1]].classList.remove('lit');
+    if(i < sequence.length){
+      tiles[sequence[i]].classList.add('lit');
+      i++;
+    } else {
+      clearInterval(interval);
+      setTimeout(()=>{
+        tiles.forEach(t=>{t.classList.remove('lit'); t.classList.remove('disabled');});
+        document.getElementById('memHeadline').textContent = 'Reproduce the pattern';
+        showingSequence = false;
+        memRoundStart = Date.now();
+      }, speed);
+    }
+  }, speed);
+}
+
+let memRoundStart = 0;
+
+stageInner.addEventListener('click', function(e){
+  if(mode !== 'memory' || showingSequence) return;
+  if(memPuzzle === 'sequence') handleSequenceClick(e);
+  else if(memPuzzle === 'spatial') handleSpatialClick(e);
+});
+
+function handleSequenceClick(e){
+  const tile = e.target.closest('.tile');
+  if(!tile || tile.classList.contains('disabled')) return;
+  const idx = parseInt(tile.dataset.idx);
+  playerInput.push(idx);
+  const expected = sequence[playerInput.length-1];
+  if(idx === expected){
+    tile.classList.add('correct');
+    setTimeout(()=>tile.classList.remove('correct'), 300);
+    if(playerInput.length === sequence.length){
+      // round complete, success
+      const rt = Date.now() - memRoundStart;
+      reactionTimes.push(rt);
+      roundsPlayed++; correctRounds++;
+      score += 10 + seqLength*2;
+      streak++; bestStreak = Math.max(bestStreak, streak);
+      maxSeqLen = Math.max(maxSeqLen, seqLength);
+      logHistory('Vault ' + '<span>Level '+seqLength+' cleared</span> in ' + (rt/1000).toFixed(1) + 's');
+      document.getElementById('memFeedback').textContent = 'Correct — moving to level ' + (seqLength+1);
+      seqLength++;
+      updateStats();
+      setTimeout(startMemoryRound, 900);
+    }
+  } else {
+    tile.classList.add('wrong');
+    document.querySelectorAll('.tile').forEach(t=>t.classList.add('disabled'));
+    roundsPlayed++;
+    streak = 0;
+    score = Math.max(0, score - 5);
+    logHistory('Vault <span>Level '+seqLength+' failed</span>');
+    document.getElementById('memFeedback').textContent = 'Not quite — pattern resets.';
+    seqLength = Math.max(3, seqLength - 1);
+    updateStats();
+    setTimeout(startMemoryRound, 1200);
+  }
+}
+
+// ---------- Digit Span ----------
+let digitLength = 4;
+let digitSeq = [];
+let digitInput = [];
+let digitRoundStart = 0;
+
+function startDigitSpan(){
+  stageInner.innerHTML = `
+    <div class="prompt">Digit Span — ${digitLength} digits</div>
+    <div class="headline" id="memHeadline">Watch the digits</div>
+    <div class="digit-display" id="digitDisplay"></div>
+    <div class="input-echo" id="digitEcho"></div>
+    <div class="numpad" id="numpad"></div>
+    <div class="feedback" id="memFeedback"></div>
+  `;
+  digitSeq = [];
+  for(let i=0;i<digitLength;i++) digitSeq.push(Math.floor(Math.random()*10));
+  digitInput = [];
+  showingSequence = true;
+  playDigits();
+}
+
+function playDigits(){
+  const display = document.getElementById('digitDisplay');
+  let i = 0;
+  const speed = Math.max(500, 850 - digitLength*20);
+  const interval = setInterval(()=>{
+    display.textContent = i < digitSeq.length ? digitSeq[i] : '';
+    i++;
+    if(i > digitSeq.length){
+      clearInterval(interval);
+      display.textContent = '?';
+      document.getElementById('memHeadline').textContent = 'Enter the digits in order';
+      renderNumpad();
+      showingSequence = false;
+      digitRoundStart = Date.now();
+    }
+  }, speed);
+}
+
+function renderNumpad(){
+  const pad = document.getElementById('numpad');
+  pad.innerHTML = '';
+  for(let n=0;n<10;n++){
+    const b = document.createElement('button');
+    b.textContent = n;
+    b.addEventListener('click', ()=>onDigitPress(n, b));
+    pad.appendChild(b);
+  }
+}
+
+function onDigitPress(n, btnEl){
+  if(showingSequence) return;
+  digitInput.push(n);
+  document.getElementById('digitEcho').textContent = digitInput.join(' ');
+  const idx = digitInput.length - 1;
+  if(digitSeq[idx] !== n){
+    document.querySelectorAll('#numpad button').forEach(b=>b.classList.add('used'));
+    roundsPlayed++;
+    streak = 0;
+    score = Math.max(0, score - 5);
+    logHistory('Digit Span <span>failed</span> at ' + digitLength + ' digits');
+    document.getElementById('memFeedback').textContent = 'Not quite — the sequence was ' + digitSeq.join('');
+    digitLength = Math.max(3, digitLength - 1);
+    updateStats();
+    setTimeout(startMemoryRound, 1300);
+    return;
+  }
+  if(digitInput.length === digitSeq.length){
+    const rt = Date.now() - digitRoundStart;
+    reactionTimes.push(rt);
+    roundsPlayed++; correctRounds++;
+    score += 10 + digitLength*2;
+    streak++; bestStreak = Math.max(bestStreak, streak);
+    maxSeqLen = Math.max(maxSeqLen, digitLength);
+    logHistory('Digit Span <span>' + digitLength + ' digits cleared</span> in ' + (rt/1000).toFixed(1) + 's');
+    document.getElementById('memFeedback').textContent = 'Correct — moving to ' + (digitLength+1) + ' digits';
+    digitLength++;
+    updateStats();
+    setTimeout(startMemoryRound, 900);
+  }
+}
+
+// ---------- Spatial Recall ----------
+let spatialCount = 3;
+let spatialTargets = [];
+let spatialFound = [];
+let spatialRoundStart = 0;
+
+function startSpatialRecall(){
+  stageInner.innerHTML = `
+    <div class="prompt">Spatial Recall — ${spatialCount} tiles</div>
+    <div class="headline" id="memHeadline">Memorize the lit tiles</div>
+    <div class="spatial-note">They'll hide shortly — click every tile that was lit, any order.</div>
+    <div class="grid" id="memGrid"></div>
+    <div class="feedback" id="memFeedback"></div>
+  `;
+  const grid = document.getElementById('memGrid');
+  for(let i=0;i<9;i++){
+    const t = document.createElement('div');
+    t.className = 'tile disabled';
+    t.dataset.idx = i;
+    grid.appendChild(t);
+  }
+  spatialTargets = [];
+  while(spatialTargets.length < spatialCount){
+    const r = Math.floor(Math.random()*9);
+    if(!spatialTargets.includes(r)) spatialTargets.push(r);
+  }
+  spatialFound = [];
+  showingSequence = true;
+  const tiles = document.querySelectorAll('#memGrid .tile');
+  spatialTargets.forEach(i=>tiles[i].classList.add('lit'));
+  const holdTime = 900 + spatialCount*180;
+  setTimeout(()=>{
+    tiles.forEach(t=>{t.classList.remove('lit'); t.classList.remove('disabled');});
+    document.getElementById('memHeadline').textContent = 'Click the tiles that were lit';
+    showingSequence = false;
+    spatialRoundStart = Date.now();
+  }, holdTime);
+}
+
+function handleSpatialClick(e){
+  const tile = e.target.closest('.tile');
+  if(!tile || tile.classList.contains('found') || tile.classList.contains('disabled')) return;
+  const idx = parseInt(tile.dataset.idx);
+  if(spatialTargets.includes(idx)){
+    tile.classList.add('found');
+    spatialFound.push(idx);
+    if(spatialFound.length === spatialTargets.length){
+      const rt = Date.now() - spatialRoundStart;
+      reactionTimes.push(rt);
+      roundsPlayed++; correctRounds++;
+      score += 10 + spatialCount*2;
+      streak++; bestStreak = Math.max(bestStreak, streak);
+      maxSeqLen = Math.max(maxSeqLen, spatialCount);
+      logHistory('Spatial Recall ' + '<span>' + spatialCount + ' tiles cleared</span> in ' + (rt/1000).toFixed(1) + 's');
+      document.getElementById('memFeedback').textContent = 'Correct — adding another tile';
+      spatialCount = Math.min(8, spatialCount + 1);
+      updateStats();
+      setTimeout(startMemoryRound, 900);
+    }
+  } else {
+    tile.classList.add('wrong');
+    document.querySelectorAll('.tile').forEach(t=>t.classList.add('disabled'));
+    roundsPlayed++;
+    streak = 0;
+    score = Math.max(0, score - 5);
+    logHistory('Spatial Recall <span>failed</span> at ' + spatialCount + ' tiles');
+    document.getElementById('memFeedback').textContent = 'Missed one — pattern resets.';
+    spatialCount = Math.max(3, spatialCount - 1);
+    updateStats();
+    setTimeout(startMemoryRound, 1200);
+  }
+}
+
+// ---------- ANALYTICS MODE: Data Sprint ----------
+let sprintTimer = null;
+let sprintTimeLimit = 6000;
+
+const sprintTypes = ['oddOne','sequence','compare','percent','closestAvg'];
+
+function startSprintRound(){
+  const type = sprintTypes[Math.floor(Math.random()*sprintTypes.length)];
+  if(type==='oddOne') renderOddOne();
+  else if(type==='sequence') renderSequencePattern();
+  else if(type==='compare') renderCompare();
+  else if(type==='percent') renderPercentSnap();
+  else renderClosestAverage();
+}
+
+function armTimer(onExpire){
+  clearInterval(sprintTimer);
+  const bar = document.getElementById('sprintTimerFill');
+  let elapsed = 0;
+  const step = 60;
+  sprintTimer = setInterval(()=>{
+    elapsed += step;
+    const pct = Math.max(0, 100 - (elapsed/sprintTimeLimit*100));
+    if(bar) bar.style.width = pct + '%';
+    if(elapsed >= sprintTimeLimit){
+      clearInterval(sprintTimer);
+      onExpire();
+    }
+  }, step);
+}
+
+function sprintFrame(targetHtml, bodyHtml){
+  stageInner.innerHTML = `
+    <div class="prompt">Data Sprint</div>
+    <div class="sprint-target">${targetHtml}</div>
+    <div class="timer-bar"><div class="timer-fill" id="sprintTimerFill"></div></div>
+    ${bodyHtml}
+    <div class="feedback" id="sprintFeedback"></div>
+  `;
+}
+
+function finishSprint(success, feedbackText){
+  clearInterval(sprintTimer);
+  sprintTotal++; roundsPlayed++;
+  if(success){
+    sprintCorrect++; correctRounds++;
+    score += 8; streak++; bestStreak = Math.max(bestStreak, streak);
+    sprintTimeLimit = Math.max(2800, sprintTimeLimit - 60);
+  } else {
+    streak = 0; score = Math.max(0, score-4);
+    sprintTimeLimit = Math.min(7000, sprintTimeLimit + 200);
+  }
+  logHistory('Sprint ' + (success ? '<span>correct</span>' : '<span style="color:var(--alert)">missed</span>'));
+  document.getElementById('sprintFeedback').textContent = feedbackText;
+  updateStats();
+  setTimeout(startSprintRound, 750);
+}
+
+function renderOddOne(){
+  const base = Math.floor(Math.random()*40)+5;
+  const count = 15;
+  const oddIdx = Math.floor(Math.random()*count);
+  let nums = [];
+  for(let i=0;i<count;i++) nums.push(i===oddIdx ? base+ (Math.random()>0.5?1:-1) : base);
+  sprintFrame('Tap the number that does not match', `<div class="num-grid">${nums.map((n,i)=>`<div class="num-cell" data-i="${i}">${n}</div>`).join('')}</div>`);
+  armTimer(()=>finishSprint(false, 'Time up — the odd value was ' + nums[oddIdx]));
+  document.querySelectorAll('.num-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const i = parseInt(cell.dataset.i);
+      if(i===oddIdx){ cell.classList.add('correct'); finishSprint(true, 'Correct — found in time'); }
+      else { cell.classList.add('wrong'); finishSprint(false, 'That one matched the rest'); }
+    });
+  });
+}
+
+function renderSequencePattern(){
+  const patterns = [
+    ()=>{ const start=Math.floor(Math.random()*5)+1, ratio=Math.floor(Math.random()*3)+2; const seq=[start,start*ratio,start*ratio*ratio]; return {seq, answer:seq[2]*ratio, label:'×'+ratio}; },
+    ()=>{ const start=Math.floor(Math.random()*10)+1, step=Math.floor(Math.random()*8)+2; const seq=[start,start+step,start+step*2]; return {seq, answer:seq[2]+step, label:'+'+step}; },
+    ()=>{ const start=Math.floor(Math.random()*6)+2; const seq=[start,start*2+1,start*2+1+ (start*2+1-start)+2]; return null; }
+  ];
+  let gen = patterns[Math.floor(Math.random()*2)](); // stick to first two reliable ones
+  const seq = gen.seq;
+  const answer = gen.answer;
+  let opts = new Set([answer]);
+  while(opts.size<4) opts.add(answer + (Math.floor(Math.random()*10)-5 || 3));
+  opts = Array.from(opts).sort(()=>Math.random()-0.5);
+
+  sprintFrame('What comes next in the sequence?', `
+    <div class="sequence-q">${seq.join(', ')}, ?</div>
+    <div class="answer-row">${opts.map(o=>`<button class="answer-btn" data-v="${o}">${o}</button>`).join('')}</div>
+  `);
+  armTimer(()=>finishSprint(false, 'Time up — the answer was ' + answer));
+  document.querySelectorAll('.answer-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = parseInt(btn.dataset.v);
+      if(v===answer){ btn.classList.add('correct'); finishSprint(true, 'Correct — pattern was ' + gen.label); }
+      else { btn.classList.add('wrong'); finishSprint(false, 'The answer was ' + answer); }
+    });
+  });
+}
+
+function renderCompare(){
+  const a = Math.floor(Math.random()*90)+10;
+  const b = Math.floor(Math.random()*90)+10;
+  if(a===b) return renderCompare();
+  sprintFrame('Which bar is taller?', `
+    <div class="num-grid" style="grid-template-columns:1fr 1fr; max-width:280px; align-items:end;">
+      <div class="num-cell" data-v="A" style="padding:${8+a}px 0;">A · ${a}</div>
+      <div class="num-cell" data-v="B" style="padding:${8+b}px 0;">B · ${b}</div>
+    </div>
+  `);
+  const correctKey = a>b ? 'A' : 'B';
+  armTimer(()=>finishSprint(false, 'Time up — ' + correctKey + ' was taller'));
+  document.querySelectorAll('.num-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const v = cell.dataset.v;
+      if(v===correctKey){ cell.classList.add('correct'); finishSprint(true, 'Correct'); }
+      else { cell.classList.add('wrong'); finishSprint(false, correctKey + ' was taller'); }
+    });
+  });
+}
+
+function renderPercentSnap(){
+  const pcts = [10,20,25,50,75];
+  const pct = pcts[Math.floor(Math.random()*pcts.length)];
+  const base = (Math.floor(Math.random()*20)+2) * 4; // keeps results whole numbers
+  const answer = Math.round(base * pct / 100);
+  let opts = new Set([answer]);
+  while(opts.size<4){
+    const delta = (Math.floor(Math.random()*6)+1) * (Math.random()>0.5?1:-1);
+    if(answer+delta > 0) opts.add(answer+delta);
+  }
+  opts = Array.from(opts).sort(()=>Math.random()-0.5);
+  sprintFrame('Quick mental math', `
+    <div class="sequence-q">${pct}% of ${base} = ?</div>
+    <div class="answer-row">${opts.map(o=>`<button class="answer-btn" data-v="${o}">${o}</button>`).join('')}</div>
+  `);
+  armTimer(()=>finishSprint(false, 'Time up — the answer was ' + answer));
+  document.querySelectorAll('.answer-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = parseInt(btn.dataset.v);
+      if(v===answer){ btn.classList.add('correct'); finishSprint(true, 'Correct — ' + pct + '% of ' + base + ' is ' + answer); }
+      else { btn.classList.add('wrong'); finishSprint(false, 'The answer was ' + answer); }
+    });
+  });
+}
+
+function renderClosestAverage(){
+  const count = 5;
+  let nums = [];
+  for(let i=0;i<count;i++) nums.push(Math.floor(Math.random()*90)+10);
+  const avg = nums.reduce((a,b)=>a+b,0) / count;
+  let bestIdx = 0, bestDiff = Infinity;
+  nums.forEach((n,i)=>{
+    const diff = Math.abs(n-avg);
+    if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+  });
+  sprintFrame('Which number is closest to the average of the set?', `
+    <div class="num-grid" style="max-width:400px;">${nums.map((n,i)=>`<div class="num-cell" data-i="${i}">${n}</div>`).join('')}</div>
+  `);
+  armTimer(()=>finishSprint(false, 'Time up — average was ' + avg.toFixed(1) + ', closest was ' + nums[bestIdx]));
+  document.querySelectorAll('.num-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const i = parseInt(cell.dataset.i);
+      if(i===bestIdx){ cell.classList.add('correct'); finishSprint(true, 'Correct — average was ' + avg.toFixed(1)); }
+      else { cell.classList.add('wrong'); finishSprint(false, 'Closest was ' + nums[bestIdx] + ' (avg ' + avg.toFixed(1) + ')'); }
+    });
+  });
+}
+
+// ---------- init ----------
+updateStats();
+startMemoryRound();
+</script>
+</body>
+</html>
